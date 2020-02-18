@@ -1,8 +1,10 @@
 pragma solidity >=0.4.21 <0.7.0;
 
 import "@openzeppelin/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts/GSN/GSNRecipient.sol";
 
-contract TallyLock is Ownable {
+
+contract TallyLock is Ownable, GSNRecipient {
 
     /**
      *  Mapping of validators added by the Owner
@@ -20,7 +22,7 @@ contract TallyLock is Ownable {
     mapping(address => string[]) private _validatorToDocuments;
 
     modifier onlyValidator() {
-        require(_validators[msg.sender], "The sender must be a validator");
+        require(_validators[_msgSender()], "The sender must be a validator");
         _;
     }
 
@@ -42,6 +44,25 @@ contract TallyLock is Ownable {
         require(bytes(_bundleUrl).length > 0, "Singnature Bundle URL cannot be empty");
 
         _documentsToSignatureBundle[_documentHash] = _bundleUrl;
-        _validatorToDocuments[msg.sender].push(_documentHash);
+        _validatorToDocuments[_msgSender()].push(_documentHash);
+    }
+
+     //META-Transactions
+    function acceptRelayedCall(
+        address relay,
+        address from,
+        bytes calldata encodedFunction,
+        uint256 transactionFee,
+        uint256 gasPrice,
+        uint256 gasLimit,
+        uint256 nonce,
+        bytes calldata approvalData,
+        uint256 maxPossibleCharge
+    ) external view returns (uint256, bytes memory) {
+        if(_validators[_msgSender()]){
+            return _approveRelayedCall();
+        }else{
+            return _rejectRelayedCall();
+        }
     }
 }
